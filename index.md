@@ -4,6 +4,140 @@
 The Vera C. Rubin Observatory relies on a network of glycol refrigeration systems to cool the telescope, the LSST Camera (LSSTCam), the M1M3 mirror, and facility spaces. Since first light, failures in these systems have repeatedly interrupted night operations. Existing documentation covers the architecture, response procedures, and individual failure reports, but no document defines nominal behavior in telemetry, which makes it hard to distinguish a developing failure from routine variation. In this technical note, we characterize the nominal operating envelope of each glycol loop using Engineering and Facility Database (EFD) telemetry, then compare the telemetry preceding catalogued failure events against that envelope to identify failure signatures and possible precursors. The result is intended as a common baseline for defining alarm thresholds.
 ```
 
-## Add content here
+# Existing References
 
-See the [Documenteer documentation](https://documenteer.lsst.io/technotes/index.html) for tips on how to write and configure your new technote.
+The list below is an extensive compilation of tickets and Confluence pages related to the Glycol Systems generated using Claude.ai. The FRACAS tickets are filtered to contain only tickets with the LSSTCam installed on Simonyi Telescope.
+
+## Main FRACAS Tickets
+
+* [FRACAS-430](https://rubinobs.atlassian.net/browse/FRACAS-430) Glycol System Failures  
+Epic created in August 2026 to group glycol outage failure reports.  
+Together with FRACAS-435, it is the closest thing to a curated event catalog.
+* [FRACAS-435](https://rubinobs.atlassian.net/browse/FRACAS-435) PCS Chiller Issues  
+Epic grouping failure reports for the LSSTCam Pumped Coolant System (PCS) chiller
+* [FRACAS-277](https://rubinobs.atlassian.net/browse/FRACAS-277) Glycol Chiller #2: Failure to Restart after Switching to Generator Power
+On 2025-04-05, Chiller #2 did not restart automatically after the switch to generator power. Glycol to the camera Cryo system and the PCS chiller was lost for about 30 minutes.
+* [FRACAS-279](https://rubinobs.atlassian.net/browse/FRACAS-279) Glycol Chiller #3 -- Short Flow Interruption on April 29, 2025
+A one-second flow interruption to the PCS chiller, coincident with a generator voltage spike (companion to FRACAS-278). The thread records that Level 2 and Level 4 loads were starving Level 7 flow, that throttling Level 2 doubled the flow on Level 7, and which consumers Chiller 3 feeds.
+* [FRACAS-280](https://rubinobs.atlassian.net/browse/FRACAS-280) LSSTCam -- Loss of Cooling Capacity
+On 2025-05-05, around 03:00 to 04:00 UTC and while on sky, the LSSTCam cryo plate temperature started to deviate from -127 °C.
+* [FRACAS-282](https://rubinobs.atlassian.net/browse/FRACAS-282) Glycol Chiller #3: Flow lost at 16:26 May 21, 2025 (UTC) after a Power Glitch
+Loss of glycol flow after a power glitch, followed by a camera recovery from the resulting failure.
+* [FRACAS-310](https://rubinobs.atlassian.net/browse/FRACAS-310) Glycol System -- Degradation Affected the Dynalene Chiller #1 Normal Operational Capability
+October 2025. Utility trunk and Dynalene temperatures rose while getting on sky. Resetting chiller01 produced only a short-lived temperature plateau.
+* [FRACAS-314](https://rubinobs.atlassian.net/browse/FRACAS-314) Commercial Power -- Loss affecting Dynalene, PCS, and Cryo #6 Cooling Systems
+November 2025. A brief power outage took down the PCS, Cryo 6, and Dynalene at the same time.
+* [FRACAS-321](https://rubinobs.atlassian.net/browse/FRACAS-321) Dynalene -- Flow Lost After Returning to Commercial Power
+November 2025. After 20 to 30 seconds without power, glycol flow recovered but Dynalene did not respond to the usual troubleshooting. Restoring Dynalene flow required a full power cycle of Chiller 2.
+* [FRACAS-322](https://rubinobs.atlassian.net/browse/FRACAS-322) Glycol -- (cold) temperature was wrongly set by EAS after the OS update of 18th Nov 2025
+After an OS and Kubernetes update, the Environmental Awareness System (EAS) set the cold glycol too warm (17 °C), and Cryo 6 was lost. The ticket notes that by design the cold glycol (Chillers 1 and 2) has a floating setpoint and the comfort glycol (Chiller 3) a fixed one.
+* [FRACAS-336](https://rubinobs.atlassian.net/browse/FRACAS-336) Dynalene System Failure -- cRIO Controller Rebooting due to Dynalene Leaking on a Sensor
+January 2026. The Dynalene system stopped cooling LSSTCam for several hours after a leak onto a sensor caused its controller to reboot.
+* [FRACAS-344](https://rubinobs.atlassian.net/browse/FRACAS-344) Glycol Controlling - VM Rebooting
+February 2026. The glycol control virtual machine rebooted and took all glycol chillers offline. OBS-1606 documents the stale telemetry published during this event.
+* [FRACAS-352](https://rubinobs.atlassian.net/browse/FRACAS-352) LSSTCam PCS Chiller -- Flow Variations during a Power Cut and when Connected to the Glycol Chiller #3
+February 2026. Automatic recirculation on Chillers 1 and 2 protected Dynalene and the Cryo compressors during a power cut. Chiller 3 took about 75 s to recover, which disturbed the PCS chiller and the camera cold plate.
+* [FRACAS-364](https://rubinobs.atlassian.net/browse/FRACAS-364) LSSTCam PCS Chiller -- Flow Variations when Connecting to the Glycol Chiller #1 and #2
+March 2026. The PCS chiller received lower glycol flow after it was connected to Chillers 1 and 2.
+* [FRACAS-366](https://rubinobs.atlassian.net/browse/FRACAS-366) LSSTCam PCS Chiller -- E2 Compressor 1 Failure
+2026-03-20 at 03:44 UTC. A compressor failure alarm was followed by low-flow alarms. Cold plate, cryo plate, and PCS inlet and outlet temperatures rose rapidly, while general glycol temperatures dropped from about 18 to 4 °C.
+* [FRACAS-371](https://rubinobs.atlassian.net/browse/FRACAS-371) HVAC Server Restart left the Glycol Chillers off
+April 2026. An HVAC server reboot during OS updates left Chillers 2, 3, and 4 off, with no Chronograf telemetry available during the upgrade. The reporter believes it happened twice.
+* [FRACAS-384](https://rubinobs.atlassian.net/browse/FRACAS-384) Low Glycol Flow in Camera Cooling System -- due to a PCS Clogged Filter
+May 2026. A clogged PCS filter reduced glycol flow to the camera cooling system over roughly two days before the report. Supersedes FRACAS-383; permanent fix and root cause still required.
+* [FRACAS-387](https://rubinobs.atlassian.net/browse/FRACAS-387) Glycol Chiller 2 -- Failing at High Output
+Chiller 2 repeatedly tripped shortly after reaching 100% output, even with a slower ramp and a 75% cap, and was moved to bypass pending maintenance. RSO-580 follows up on the EAS setpoint change at the time of the trip.
+* [FRACAS-402](https://rubinobs.atlassian.net/browse/FRACAS-402) Investigate Glycol temperature set point reset after power outage
+After multiple outages, Chillers 1 and 2 came back with incorrect setpoints. The ticket investigates why the Niagara system does not store or apply the values commanded by the HVAC CSC.
+* [FRACAS-414](https://rubinobs.atlassian.net/browse/FRACAS-414) Storm, Jul 2026 -- Summit Glycol System went off after the Generator Power became Unstable
+July 2026 storm. The glycol chillers shut down when the main generator stopped providing a stable 480 V supply.
+* [FRACAS-415](https://rubinobs.atlassian.net/browse/FRACAS-415) Storm, Jul 2026 -- Summit Dynalene System Went off after Losing the Glycol Coolant Supply
+Same event. Dynalene shut down after the glycol chillers and their recirculation system stopped supplying coolant, a clear example of the glycol-to-Dynalene cascade.
+
+## Related RSO Tickets
+
+* [RSO-899](https://rubinobs.atlassian.net/browse/RSO-899) Glycol issue systematic analysis
+Epic to analyze 2026 glycol flow and temperature telemetry and look for patterns preceding flow loss after power glitches and setpoint changes.
+* [RSO-900](https://rubinobs.atlassian.net/browse/RSO-900) Analyse the glycol flow for the year of 2026
+Looks for lost flow or large flow changes during 2026 and their connection to power glitches.
+* [RSO-901](https://rubinobs.atlassian.net/browse/RSO-901) Analyse the glycol temperature set points for the year of 2026
+Looks for sudden setpoint changes during 2026 and their connection to Niagara losses or glycol system stops.
+* [RSO-909](https://rubinobs.atlassian.net/browse/RSO-909) Analyze the input pressure and output pressures in each of the glycol chillers ~2h before each major fault
+Pressure-focused precursor analysis for each glycol chiller.
+* [RSO-580](https://rubinobs.atlassian.net/browse/RSO-580) Investigate how the EAS controlled the Glycol Chiller at the time of the failure
+Action from FRACAS-387: Chiller 2 tripped on the day the EAS changed its setpoint.
+* [RSO-635](https://rubinobs.atlassian.net/browse/RSO-635) Taxonomy - Facilities Refrigeration System
+Taxonomy for the refrigeration systems. The Dynalene portion is done and the glycol portion is pending.
+* [RSO-887](https://rubinobs.atlassian.net/browse/RSO-887) Documentation for Glycol issues troubleshooting and monitoring
+Plans new emergency and monitoring procedures covering Grafana monitoring, chiller recovery by the observing specialists, and Niagara recovery.
+* [RSO-557](https://rubinobs.atlassian.net/browse/RSO-557) LSSTCam Cryogenic, Dynalene, and Glycol System Inter-dependence
+Proposed Docushare page describing how the LSSTCam cryogenic systems depend on the Dynalene and glycol systems.
+* [RSO-907](https://rubinobs.atlassian.net/browse/RSO-907) Update diagram in the Glycol documentation page
+Lists the corrections needed in the architecture diagram, such as TMA thermal cabinets, whether Chiller 4 feeds the control room and offices, and the valve from Chiller 3 to the Level 2 CRACs.
+
+## Related OBS Tickets
+
+* [OBS-830](https://rubinobs.atlassian.net/browse/OBS-830) HVAC subsystems report zeros (or fixed values) when component is disconnected
+The HVAC CSC publishes zeros or frozen values as real telemetry when it loses the connection. This is relevant when filtering data for a nominal baseline.
+* [OBS-930](https://rubinobs.atlassian.net/browse/OBS-930) Uncommanded Chiller / HVAC setpoint changes
+May 2025. The dome HVAC setpoint and the Chiller #4 setpoint changed without being commanded.
+* [OBS-1225](https://rubinobs.atlassian.net/browse/OBS-1225) Glycol Chiller Telemetry Lost and HVAC not commandable
+All glycol chiller telemetry was lost for about 30 minutes while the chillers themselves kept running. Cause attributed to cabling and communication with the Niagara controller.
+* [OBS-1606](https://rubinobs.atlassian.net/browse/OBS-1606) HVAC CSC publishes stale data, investigate how to fix telemetry being published
+Old telemetry was republished as if current during FRACAS-344. The ticket proposes adding a measurement timestamp.
+* [OBS-1649](https://rubinobs.atlassian.net/browse/OBS-1649) Watcher alarms for dynalene chillers
+Requests Watcher alarms for Dynalene so observers are alerted before, or in parallel with, camera alerts.
+* [OBS-1660](https://rubinobs.atlassian.net/browse/OBS-1660) Review/add additional watcher alarms for chillers
+Chiller 2 stayed off after a March 2026 glitch with no alarm for over an hour. The flow alarm limit was likely set too low, and only some of the Watcher fields were populated.
+
+## Confluence Pages
+
+### System description
+
+* [Glycol/Dynalene Flow Path and Cooling System Architecture](https://rubinobs.atlassian.net/wiki/spaces/OOD/pages/1065943153)
+Floor-by-floor description of the cooling system, from the Level 1 chiller plant to the PCS chiller and Cryo circuits on Pier 7, including installed equipment, alarm resets, the Dynalene control and telemetry path, and dashboards. Still a draft, and its diagram is being corrected under RSO-907.
+* [Introduction to Chillers](https://rubinobs.atlassian.net/wiki/spaces/OOD/pages/949944397)
+Overview of the site's nine chillers linked to the cooling system and the Oil Supply System: the glycol chillers on Level 1, the Dynalene chillers on Level 5, and the PCS chiller on Level 7.
+* [Environmental Awareness System Overview](https://rubinobs.atlassian.net/wiki/spaces/OOD/pages/465240158)
+Describes how the EAS sets glycol setpoints from ambient sensors or a forecast to keep the dome isothermal and track outside temperature. States that EAS keeps the coolant 5 to 10 °C below inside ambient at night.
+* [Dynalene System](https://rubinobs.atlassian.net/wiki/spaces/OOD/pages/228392976)
+Introduction to the Dynalene system as used in operations, with a note that a flow stop requires a coordinated response within about 30 minutes.
+* [Camera PCS Chiller [chiller2] and the Coldplate](https://rubinobs.atlassian.net/wiki/spaces/OOD/pages/1300332685)
+Explains how the PCS cools the camera cold plate to about -40 °C through vacuum-insulated lines from the chiller cabinet on Level 7.
+* [Plan/Proposal for switching cryo compressors to cold (tracking) Glycol on level 7](https://rubinobs.atlassian.net/wiki/spaces/CAM/pages/1723957276)
+Describes the cold water circuit of the LSSTCam cryo modules and its flow and temperature needs, and proposes moving the compressors to the cold, tracking glycol loop.
+
+### Monitoring and response
+
+* [Glycol Cooling System Monitoring and Response Guide](https://rubinobs.atlassian.net/wiki/spaces/OOD/pages/847446349)
+Main operator guide: dashboards to watch, design conditions (40% ethylene glycol, 12.7 barg, inlet 5 °C below ambient, temperature tolerances), flow thresholds of about 1.5 gpm for concern and below 1 gpm for emergency, and the note that the PCS usually survives glycol outages shorter than about 90 s.
+* [Monitoring and Response Procedures for Dynalene Chillers and Glycol Flow Rate](https://rubinobs.atlassian.net/wiki/spaces/~pvenegas/pages/1805778961)
+Checklist-style monitoring for the Dynalene chillers, including glycol feed flow thresholds above about 55 LPM for each chiller and where to check them in the Dynalene UI and Chronograf.
+* [Power Outage - Dynalene Monitoring](https://rubinobs.atlassian.net/wiki/spaces/OOD/pages/1211662339)
+What to monitor during a power outage, pointing to the dashboard covering the Level 5 Dynalene chillers and the Level 1 glycol chillers.
+* [Glycol, Dynalene, PCS, Cryo or Power Failure](https://rubinobs.atlassian.net/wiki/spaces/OOD/pages/763232393)
+Emergency response for glycol, Dynalene, PCS chiller, Cryo, and full power failures, starting with calling Facilities and the Camera team. Draft that requires training.
+* [PCS Chiller Troubleshooting Guide](https://rubinobs.atlassian.net/wiki/spaces/~712020071056b447a84bfe9d0fd25503c7b3a2/pages/2003435560)
+Troubleshooting reference for PCS chiller outages and restart readiness, focused on telling a true chiller fault from a protection trip or an environmental condition. Under active editing (RSO-896).
+
+### Analysis, incidents, and maintenance
+
+* [Glycol Flow Telemetry Issue Identification Framework](https://rubinobs.atlassian.net/wiki/spaces/~pvenegas/pages/2031419439)
+Draft for RSO-900. Groups 2026 glycol issues into three classes (true flow outages, telemetry outages that mimic flow loss, and setpoint anomalies) and starts an event register. Notes that no normal flow range is documented for the chiller loops.
+* [20260320 PCS Failure](https://rubinobs.atlassian.net/wiki/spaces/~fanning/pages/1540456464)
+Incident write-up for FRACAS-366, with the sequence of alerts raised by the PCS chiller.
+* [GP and Cold Glycol filters checkout log](https://rubinobs.atlassian.net/wiki/spaces/LTS/pages/50086177)
+Record of checkouts, cleanings, and filter states on the general-purpose and cold glycol circuits. Useful for relating clogging events like FRACAS-384 to maintenance history.
+* [10 Dynalene main filters/strainer checkout log](https://rubinobs.atlassian.net/wiki/spaces/LTS/pages/50086350)
+The same kind of log for the Dynalene circuits.
+* [Organizing glycol & dynalene contents for OS](https://rubinobs.atlassian.net/wiki/spaces/~jseron/pages/1067581452)
+Tentative structure for observing-specialist documentation on glycol and Dynalene. Useful to check so the technote does not overlap with it.
+
+## Other References
+
+* [Fluid Distribution System (092-308-F-M-01000)](https://docushare.lsst.org/docushare/dsweb/Get/Document-45445/092-308-F-M-01000-Ed002.pdf)
+Docushare design document for the fluid distribution system.
+* [LSST Camera Value Engineering / Alternative Analyses Collection (LCA-399)](https://docushare.lsst.org/docushare/dsweb/Get/LCA-399/LSST%20Camera%20Value%20engineering-Alternative%20Analyses%20Collection--LCA-399.pdf)
+Camera trade studies referenced from the monitoring guide.
+* [Facilities Temperatures Reports (Times Square)](https://usdf-rsp.slac.stanford.edu/times-square/github/lsst-sitcom/reports-performance-summary/sst/nights/facilities_temperatures_reports)
+Nightly facilities temperature report. A possible starting point for the nominal baseline.
