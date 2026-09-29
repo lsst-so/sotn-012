@@ -4,6 +4,60 @@
 The Vera C. Rubin Observatory relies on a network of glycol refrigeration systems to cool the telescope, the LSST Camera (LSSTCam), the M1M3 mirror, and facility spaces. Since first light, failures in these systems have repeatedly interrupted night operations. Existing documentation covers the architecture, response procedures, and individual failure reports, but no document defines nominal behavior in telemetry, which makes it hard to distinguish a developing failure from routine variation. In this technical note, we characterize the nominal operating envelope of each glycol loop using Engineering and Facility Database (EFD) telemetry, then compare the telemetry preceding catalogued failure events against that envelope to identify failure signatures and possible precursors. The result is intended as a common baseline for defining alarm thresholds.
 ```
 
+# RSO-901 Glycol Set Point Analysis
+
+[RSO-901](https://rubinobs.atlassian.net/browse/RSO-901) asks whether the glycol chiller set points changed suddenly during 2026, and whether those changes line up with the catalogued glycol failures. We read every `lsst.sal.HVAC.logevent_chillerConfiguration` event, which publishes a chiller's `activeSetpoint` each time it is (re)configured, and plotted the set points against the incidents in `notebooks/glycol_catastrophic_faults.csv`.
+
+We found **no set-point signature that consistently precedes a failure**. The main result is that frequent set-point changes on Chillers 01 and 02 are expected. The Environmental Awareness System (EAS) commands them automatically and moves them whenever the glycol-to-ambient temperature difference leaves a configured band. A set-point change on those two chillers is therefore routine, not an anomaly by itself.
+
+## What drives the set points
+
+The EAS CSC ([`ts_eas`](https://github.com/lsst-ts/ts_eas)) sends `HVAC.configChiller` to exactly two chillers ([`N_CHILLERS = 2`](https://github.com/lsst-ts/ts_eas/blob/df201f886e74f07d61069ba0ce0d8199fb877849/python/lsst/ts/eas/hvac_model.py#L44)): `coldGlycolChiller01` (device 101) and `coldGlycolChiller02` (device 102). It never commands `comfortGlycolChiller03` (103) or `coatingGlycolChiller04` (104) ([`DeviceId` enum](https://github.com/lsst-ts/ts_xml/blob/853318b5ca33cfa23150c20a3400156e6a946ae4/python/lsst/ts/xml/enums/HVAC.py#L41-L44)). Two loops in `HvacModel` set the values:
+
+1. **Once a day, at noon** ([`adjust_glycol_chillers_at_noon`](https://github.com/lsst-ts/ts_eas/blob/df201f886e74f07d61069ba0ce0d8199fb877849/python/lsst/ts/eas/hvac_model.py#L706-L745)), EAS computes new set points from the previous night's minimum indoor temperature, read from the indoor ESS (SAL index 113).
+2. **Every 60 s** ([`monitor_glycol_chillers`](https://github.com/lsst-ts/ts_eas/blob/df201f886e74f07d61069ba0ce0d8199fb877849/python/lsst/ts/eas/hvac_model.py#L650-L704)), EAS checks the difference between the average of the two set points and the *current* indoor temperature ([`check_glycol_setpoint`](https://github.com/lsst-ts/ts_eas/blob/df201f886e74f07d61069ba0ce0d8199fb877849/python/lsst/ts/eas/hvac_model.py#L625-L648)). If that difference falls outside `[glycol_band_low, glycol_band_high]`, EAS recomputes both set points from the current indoor temperature and sends them.
+
+In both cases [`compute_glycol_setpoints`](https://github.com/lsst-ts/ts_eas/blob/df201f886e74f07d61069ba0ce0d8199fb877849/python/lsst/ts/eas/hvac_model.py#L558-L623) targets an average of `ambient + glycol_average_offset`. It raises that target if needed to stay above the night's maximum indoor dew point plus a margin, then splits it into two set points `glycol_setpoints_delta` apart, with Chiller 01 the warmer one. The result is clamped to the absolute minimum and maximum. The summit values ([`ts_config_ocs` `EAS/v9/_init.yaml`](https://github.com/lsst-ts/ts_config_ocs/blob/8c215dac5d45fc766953adec2c27bc4fe3451151/EAS/v9/_init.yaml#L12-L18)) are:
+
+| Parameter | Value | Meaning |
+|---|---|---|
+| `glycol_average_offset` | −7.5 °C | Nominal average set point relative to indoor ambient |
+| `glycol_band_low` / `glycol_band_high` | −10.0 / −5.0 °C | Allowed (average set point − ambient) before a recompute |
+| `glycol_setpoints_delta` | 1.0 °C | Chiller 01 − Chiller 02 |
+| `glycol_dew_point_margin` | 1.0 °C | Margin above the nightly maximum indoor dew point |
+| `glycol_absolute_minimum` / `_maximum` | −10.0 / 10.0 °C | Clamps on the colder / warmer set point |
+
+Only the absolute maximum changed in 2026: it was 9 °C until 2026-02-23, then 20 °C until 2026-04-11, then 10 °C. Until `ts_eas` v0.15.0, EAS stopped adjusting the glycol at night. [OSW-2128](https://rubinobs.atlassian.net/browse/OSW-2128) ([ts_eas#79](https://github.com/lsst-ts/ts_eas/pull/79), merged 2026-04-08, released 2026-05-06) removed that exception, so the band check now runs around the clock. [RSO-580](https://rubinobs.atlassian.net/browse/RSO-580) follows up on the related FRACAS-387 case, where Chiller 2 tripped on the day EAS changed its set point.
+
+## Expected behavior per chiller
+
+The telemetry matches the code (1 January to 31 May 2026, 151 `day_obs`):
+
+* **Chillers 01 and 02 (cold glycol, EAS-controlled): many updates.** They changed set point 326 and 339 times, on 144 and 147 of the 151 days. The median step was 1.0 °C. In 109 of 119 near-simultaneous updates, Chiller 01 was exactly 1.0 °C warmer than Chiller 02, which is the configured `glycol_setpoints_delta`. The changes cluster at two fixed local times, and both clusters shift by one hour in UTC at the 5 April DST change. One is local noon (15 UTC, then 16 UTC), the daily reset. The other is about 07:00 local, around sunrise (10 UTC, then 11 UTC). The remaining changes are spread through the day, as expected from band-triggered recomputes.
+* **Chiller 03 (comfort glycol, not EAS-controlled): few updates.** It changed 101 times, but on only 24 days. Almost all of those changes are short bursts that toggle between 0 °C and 2 °C within seconds to minutes. Because EAS does not command this chiller, these changes come from outside EAS (e.g. manual changes or the facility controls).
+* **Chiller 04 (coating glycol): no telemetry.** `logevent_chillerConfiguration` has no events for device 104 in the analysed range.
+
+## Interactive figure
+
+Figure 1 shows the set points (top) and the number of set-point changes per week (bottom). Drag to pan, scroll to zoom the time axis, hover for values, and click a legend entry to hide that chiller. Dashed gray lines mark catalogued cooling incidents #7 ([FRACAS-366](https://rubinobs.atlassian.net/browse/FRACAS-366), 2026-03-20) and #8 ([FRACAS-383](https://rubinobs.atlassian.net/browse/FRACAS-383), [FRACAS-384](https://rubinobs.atlassian.net/browse/FRACAS-384), 2026-05-07). The figure currently covers January to May 2026. The *Date Range* notebook regenerates it for any `day_obs` range.
+
+```{raw} html
+<iframe src="plots/chiller_setpoints_20260101_20260531.html"
+        title="Interactive plot of HVAC chiller set points, January to May 2026"
+        style="width: 100%; height: 700px; border: 0;"
+        loading="lazy"></iframe>
+<p><em>Figure 1. HVAC chiller active set points from <code>lsst.sal.HVAC.logevent_chillerConfiguration</code>, 2026-01-01 to 2026-05-31 (UTC).
+<a href="plots/chiller_setpoints_20260101_20260531.html">Open the figure full screen.</a></em></p>
+```
+
+## Reproducing the analysis
+
+The notebooks are in the [`notebooks/`](https://github.com/lsst-so/sotn-012/tree/main/notebooks) folder of this repository and must run on the RSP (they query the EFD):
+
+* `RSO-901 Glycol Set Points - Date Range.ipynb` builds the change-log table, the incident overlay and Figure 1 (via `setpoint_plots.py`).
+* `RSO-901 Glycol Set Points - Monthly.ipynb` and `RSO-901 Glycol Set Points - Single Day.ipynb` show the same event over one month or one night.
+* `ai_notes.md` surveys the HVAC topics and explains how to interpret `chillerConfiguration`.
+
 # Existing References
 
 The list below is an extensive compilation of tickets and Confluence pages related to the Glycol Systems generated using Claude.ai. The FRACAS tickets are filtered to contain only tickets with the LSSTCam installed on Simonyi Telescope.
