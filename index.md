@@ -6,7 +6,7 @@ The Vera C. Rubin Observatory relies on a network of glycol refrigeration system
 
 # RSO-901 Glycol Set Point Analysis
 
-[RSO-901](https://rubinobs.atlassian.net/browse/RSO-901) asks whether the glycol chiller set points changed suddenly during 2026, and whether those changes line up with the catalogued glycol failures. We read every `lsst.sal.HVAC.logevent_chillerConfiguration` event from 1 January to 20 July 2026, which publishes a chiller's `activeSetpoint` each time it is (re)configured, and plotted the set points against the incidents in `notebooks/glycol_catastrophic_faults.csv`.
+[RSO-901](https://rubinobs.atlassian.net/browse/RSO-901) is about understanding what are the criteria related to changes in the glycol chiller set points, and whether those changes line up with the catalogued glycol failures. We read every `lsst.sal.HVAC.logevent_chillerConfiguration` event from 1 January to 20 July 2026 (which is when observations were stopped due to a rain storm). This event publishes a chiller's `activeSetpoint` each time it is (re)configured, and plotted the set points against the incidents in `notebooks/glycol_catastrophic_faults.csv`.
 
 We found **no set-point signature that consistently precedes a failure**. The main result is that frequent set-point changes on Chillers 01 and 02 are expected. The Environmental Awareness System (EAS) commands them automatically and moves them whenever the glycol-to-ambient temperature difference leaves a configured band. A set-point change on those two chillers is therefore routine, not an anomaly by itself.
 
@@ -14,10 +14,17 @@ We found **no set-point signature that consistently precedes a failure**. The ma
 
 The EAS CSC ([`ts_eas`](https://github.com/lsst-ts/ts_eas)) sends `HVAC.configChiller` to exactly two chillers ([`N_CHILLERS = 2`](https://github.com/lsst-ts/ts_eas/blob/df201f886e74f07d61069ba0ce0d8199fb877849/python/lsst/ts/eas/hvac_model.py#L44)): `coldGlycolChiller01` (device 101) and `coldGlycolChiller02` (device 102). It never commands `comfortGlycolChiller03` (103) or `coatingGlycolChiller04` (104) ([`DeviceId` enum](https://github.com/lsst-ts/ts_xml/blob/853318b5ca33cfa23150c20a3400156e6a946ae4/python/lsst/ts/xml/enums/HVAC.py#L41-L44)). Two loops in `HvacModel` set the values:
 
-1. **Once a day, at noon** ([`adjust_glycol_chillers_at_noon`](https://github.com/lsst-ts/ts_eas/blob/df201f886e74f07d61069ba0ce0d8199fb877849/python/lsst/ts/eas/hvac_model.py#L706-L745)), EAS computes new set points from the previous night's minimum indoor temperature, read from the indoor ESS (SAL index 113).
+1. **Once a day, at noon** ([`adjust_glycol_chillers_at_noon`](https://github.com/lsst-ts/ts_eas/blob/df201f886e74f07d61069ba0ce0d8199fb877849/python/lsst/ts/eas/hvac_model.py#L706-L745)), EAS computes new set points based on the previous night's minimum indoor temperature, read from the indoor ESS (SAL index 113).
 2. **Every 60 s** ([`monitor_glycol_chillers`](https://github.com/lsst-ts/ts_eas/blob/df201f886e74f07d61069ba0ce0d8199fb877849/python/lsst/ts/eas/hvac_model.py#L650-L704)), EAS checks the difference between the average of the two set points and the *current* indoor temperature ([`check_glycol_setpoint`](https://github.com/lsst-ts/ts_eas/blob/df201f886e74f07d61069ba0ce0d8199fb877849/python/lsst/ts/eas/hvac_model.py#L625-L648)). If that difference falls outside `[glycol_band_low, glycol_band_high]`, EAS recomputes both set points from the current indoor temperature and sends them.
 
-In both cases [`compute_glycol_setpoints`](https://github.com/lsst-ts/ts_eas/blob/df201f886e74f07d61069ba0ce0d8199fb877849/python/lsst/ts/eas/hvac_model.py#L558-L623) targets an average of `ambient + glycol_average_offset`. It raises that target if needed to stay above the night's maximum indoor dew point plus a margin, then splits it into two set points `glycol_setpoints_delta` apart, with Chiller 01 the warmer one. The result is clamped to the absolute minimum and maximum. The summit values ([`ts_config_ocs` `EAS/v9/_init.yaml`](https://github.com/lsst-ts/ts_config_ocs/blob/8c215dac5d45fc766953adec2c27bc4fe3451151/EAS/v9/_init.yaml#L12-L18)) are:
+In both cases the two set points come from [`compute_glycol_setpoints`](https://github.com/lsst-ts/ts_eas/blob/df201f886e74f07d61069ba0ce0d8199fb877849/python/lsst/ts/eas/hvac_model.py#L558-L623), which works in four steps:
+
+1. **Aim below ambient.** The *average* of the two set points is targeted at `ambient + glycol_average_offset`. The offset is negative, so the glycol runs colder than the room: at 12 °C indoors the target average is 4.5 °C.
+2. **Don't go below the dew point.** If that target is at or under the night's maximum indoor dew point plus a margin, it is raised to sit above it. This is condensation protection — glycol colder than the dew point would form water on the pipes and optics.
+3. **Split the average in two.** One chiller goes half of `glycol_setpoints_delta` above the average, the other half below, so they end up `delta` apart and still average to the target. Chiller 01 is always the warmer one. With a 4.5 °C average and a 1 °C delta: Chiller 01 at 5.0 °C, Chiller 02 at 4.0 °C.
+4. **Clamp to the hard limits.** If the colder set point would fall under `glycol_absolute_minimum`, it is pinned there and the warmer one moved up to keep the 1 °C gap; the same happens in reverse at `glycol_absolute_maximum`. The gap is preserved, so a clamped pair sits exactly at the limit — which is why Chillers 01/02 read 10.0/9.0 °C when the maximum is hit.
+
+The summit values ([`ts_config_ocs` `EAS/v9/_init.yaml`](https://github.com/lsst-ts/ts_config_ocs/blob/8c215dac5d45fc766953adec2c27bc4fe3451151/EAS/v9/_init.yaml#L12-L18)) are:
 
 | Parameter | Value | Meaning |
 |---|---|---|
