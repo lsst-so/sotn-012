@@ -5,3 +5,11 @@ repos:
       # - id: trailing-whitespace
       - id: check-yaml
       - id: check-toml
+
+  # Analysis notebooks are committed without outputs: the EFD queries only run
+  # on the RSP, so stored outputs are noise in the diff and go stale silently.
+  # Figures for the technote are saved to _extra/plots/ instead.
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.7.1
+    hooks:
+      - id: nbstripout

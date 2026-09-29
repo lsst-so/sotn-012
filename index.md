@@ -6,7 +6,7 @@ The Vera C. Rubin Observatory relies on a network of glycol refrigeration system
 
 # RSO-901 Glycol Set Point Analysis
 
-[RSO-901](https://rubinobs.atlassian.net/browse/RSO-901) asks whether the glycol chiller set points changed suddenly during 2026, and whether those changes line up with the catalogued glycol failures. We read every `lsst.sal.HVAC.logevent_chillerConfiguration` event, which publishes a chiller's `activeSetpoint` each time it is (re)configured, and plotted the set points against the incidents in `notebooks/glycol_catastrophic_faults.csv`.
+[RSO-901](https://rubinobs.atlassian.net/browse/RSO-901) asks whether the glycol chiller set points changed suddenly during 2026, and whether those changes line up with the catalogued glycol failures. We read every `lsst.sal.HVAC.logevent_chillerConfiguration` event from 1 January to 20 July 2026, which publishes a chiller's `activeSetpoint` each time it is (re)configured, and plotted the set points against the incidents in `notebooks/glycol_catastrophic_faults.csv`.
 
 We found **no set-point signature that consistently precedes a failure**. The main result is that frequent set-point changes on Chillers 01 and 02 are expected. The Environmental Awareness System (EAS) commands them automatically and moves them whenever the glycol-to-ambient temperature difference leaves a configured band. A set-point change on those two chillers is therefore routine, not an anomaly by itself.
 
@@ -31,25 +31,29 @@ Only the absolute maximum changed in 2026: it was 9 °C until 2026-02-23, then 2
 
 ## Expected behavior per chiller
 
-The telemetry matches the code (1 January to 31 May 2026, 151 `day_obs`):
+The telemetry matches the code (1 January to 20 July 2026, 201 `day_obs`, 1128 events):
 
-* **Chillers 01 and 02 (cold glycol, EAS-controlled): many updates.** They changed set point 326 and 339 times, on 144 and 147 of the 151 days. The median step was 1.0 °C. In 109 of 119 near-simultaneous updates, Chiller 01 was exactly 1.0 °C warmer than Chiller 02, which is the configured `glycol_setpoints_delta`. The changes cluster at two fixed local times, and both clusters shift by one hour in UTC at the 5 April DST change. One is local noon (15 UTC, then 16 UTC), the daily reset. The other is about 07:00 local, around sunrise (10 UTC, then 11 UTC). The remaining changes are spread through the day, as expected from band-triggered recomputes.
-* **Chiller 03 (comfort glycol, not EAS-controlled): few updates.** It changed 101 times, but on only 24 days. Almost all of those changes are short bursts that toggle between 0 °C and 2 °C within seconds to minutes. These values are well below the "generally > 5 °C" set point given in the [Introduction to Chillers](https://rubinobs.atlassian.net/wiki/spaces/OOD/pages/949944397/Introduction+to+Chillers) page, which needs follow-up. Because EAS does not command this chiller, these changes come from outside EAS (e.g. manual changes or the facility controls).
+* **Chillers 01 and 02 (cold glycol, EAS-controlled): many updates.** They changed set point 472 and 468 times, on 188 and 192 of the 201 days. The median step was 1.0 °C. Of 348 near-simultaneous updates (within 5 s), Chiller 01 was warmer than Chiller 02 in 339, and by exactly 1.0 °C in 305 — the configured `glycol_setpoints_delta`. The changes cluster at two fixed local times, and both clusters shift by one hour in UTC at the 5 April DST change. One is local noon (15 UTC, then 16 UTC), the daily reset. The other is about 07:00 local, around sunrise (10 UTC, then 11 UTC). The remaining changes are spread through the day, as expected from band-triggered recomputes. Set points ranged from −4.0 to 12.5 °C on Chiller 01 and −3.7 to 13.0 °C on Chiller 02, so the −10 °C absolute minimum was never reached.
+* **Chiller 03 (comfort glycol, not EAS-controlled): few updates.** It changed 148 times, but on only 31 days, and its first event is 16 January. Almost all of those changes are short bursts that toggle between 0 °C and 2 °C within seconds to minutes (104 of 161 consecutive gaps are under 5 min); it sat at 3 °C or 5 °C only once each. These values are well below the "generally > 5 °C" set point given in the [Introduction to Chillers](https://rubinobs.atlassian.net/wiki/spaces/OOD/pages/949944397/Introduction+to+Chillers) page, which needs follow-up. Because EAS does not command this chiller, these changes come from outside EAS (e.g. manual changes or the facility controls).
 * **Chiller 04 (outside; `coatingGlycolChiller04` in the enum, now bypassed to cool only the computer room): no telemetry.** It has a set point, and [OBS-930](https://rubinobs.atlassian.net/browse/OBS-930) reports it changing without being commanded in 2025, but `logevent_chillerConfiguration` has no events for device 104 in the analysed range.
 
-No document explains the 1 °C stagger. [OSW-860](https://rubinobs.atlassian.net/browse/OSW-860) only states it as a requirement. Because Chillers 01 and 02 feed the same cold glycol loop, the likely intent is lead/standby operation: Chiller 02 (colder) carries the load, and Chiller 01 picks up only if the supply warms by about 1 °C. This is our inference and has not been confirmed. The *Date Range* notebook compares the chillers' `workingCapacity` to test it.
+No document explains the 1 °C stagger. [OSW-860](https://rubinobs.atlassian.net/browse/OSW-860) only states it as a requirement. Because Chillers 01 and 02 feed the same cold glycol loop, one candidate intent is lead/standby operation: Chiller 02 (colder) would carry the load, and Chiller 01 would pick up only if the supply warmed by about 1 °C.
+
+**The `workingCapacity` telemetry does not support that reading.** Comparing the two chillers over the days with data, Chiller 02 does run harder on average (mean of the daily medians 32.9% versus 27.2%), but Chiller 01 is *not* idle: its daily median is exactly 25% on at least half the days (the 25th through 75th percentiles are all 25%) and drops to 0 only on a few isolated days. Chiller 01 was the less-loaded of the two in only 54% of 10-min bins, which is close to a coin flip and far from the near-100% a true standby would give. The distributions overlap heavily, both chillers spend long stretches pinned at the same 25% value, and each reaches 50% or more at times. This looks like two chillers sharing the load with a mild bias toward Chiller 02, not a lead/standby pair. The purpose of the 1 °C stagger therefore remains unexplained, and confirming it needs input from Facilities rather than more telemetry.
+
+Two caveats on that comparison. `workingCapacity` is only available for 112 of the 201 `day_obs` in the window, ending 22 April, so the July storm period is not covered — the gap is consistent with [OBS-1225](https://rubinobs.atlassian.net/browse/OBS-1225) and [FRACAS-371](https://rubinobs.atlassian.net/browse/FRACAS-371), where chiller telemetry was lost while the chillers kept running. The heavy clustering at exactly 25% and 50% also suggests the field is quantised or partly a reported rather than measured value, which [OBS-830](https://rubinobs.atlassian.net/browse/OBS-830) would make worse. A firmer test should use the per-compressor `compressorNNWorking` flags or the evaporator supply/return temperature split.
 
 ## Interactive figure
 
-Figure 1 shows the set points (top) and the number of set-point changes per week (bottom). Drag to pan, scroll to zoom the time axis, hover for values, and click a legend entry to hide that chiller. Dashed gray lines mark catalogued cooling incidents #7 ([FRACAS-366](https://rubinobs.atlassian.net/browse/FRACAS-366), 2026-03-20) and #8 ([FRACAS-383](https://rubinobs.atlassian.net/browse/FRACAS-383), [FRACAS-384](https://rubinobs.atlassian.net/browse/FRACAS-384), 2026-05-07). The figure currently covers January to May 2026. The *Date Range* notebook regenerates it for any `day_obs` range.
+Figure 1 shows the set points (top) and the number of set-point changes per week (bottom). Drag to pan, scroll to zoom the time axis, hover for values, and click a legend entry to hide that chiller. Dashed gray lines mark catalogued cooling incidents #7 ([FRACAS-366](https://rubinobs.atlassian.net/browse/FRACAS-366), 2026-03-20) and #8 ([FRACAS-383](https://rubinobs.atlassian.net/browse/FRACAS-383), [FRACAS-384](https://rubinobs.atlassian.net/browse/FRACAS-384), 2026-05-07). The window extends through 20 July so that it covers the July storm ([FRACAS-414](https://rubinobs.atlassian.net/browse/FRACAS-414), [FRACAS-415](https://rubinobs.atlassian.net/browse/FRACAS-415)); that event is not yet in `glycol_catastrophic_faults.csv`, so it carries no dashed line. The *Date Range* notebook regenerates the figure for any `day_obs` range.
 
 ```{raw} html
-<iframe src="plots/chiller_setpoints_20260101_20260531.html"
-        title="Interactive plot of HVAC chiller set points, January to May 2026"
+<iframe src="plots/chiller_setpoints_20260101_20260720.html"
+        title="Interactive plot of HVAC chiller set points, January to July 2026"
         style="width: 100%; height: 700px; border: 0;"
         loading="lazy"></iframe>
-<p><em>Figure 1. HVAC chiller active set points from <code>lsst.sal.HVAC.logevent_chillerConfiguration</code>, 2026-01-01 to 2026-05-31 (UTC).
-<a href="plots/chiller_setpoints_20260101_20260531.html">Open the figure full screen.</a></em></p>
+<p><em>Figure 1. HVAC chiller active set points from <code>lsst.sal.HVAC.logevent_chillerConfiguration</code>, 2026-01-01 to 2026-07-20 (UTC).
+<a href="plots/chiller_setpoints_20260101_20260720.html">Open the figure full screen.</a></em></p>
 ```
 
 ## Reproducing the analysis
@@ -59,6 +63,8 @@ The notebooks are in the [`notebooks/`](https://github.com/lsst-so/sotn-012/tree
 * `RSO-901 Glycol Set Points - Date Range.ipynb` builds the change-log table, the incident overlay and Figure 1 (via `setpoint_plots.py`).
 * `RSO-901 Glycol Set Points - Monthly.ipynb` and `RSO-901 Glycol Set Points - Single Day.ipynb` show the same event over one month or one night.
 * `ai_notes.md` surveys the HVAC topics and explains how to interpret `chillerConfiguration`.
+
+They are committed without outputs (enforced by `nbstripout` in `.pre-commit-config.yaml`), so run them in a JupyterLab session on the RSP with the `LSST` kernel to reproduce the numbers above. To move the window, change `start_day_obs` / `end_day_obs` in the *Date Range* notebook's parameters cell and re-run; it writes `../_extra/plots/chiller_setpoints_<start>_<end>.html`, which Sphinx copies to the site, so the `<iframe>` path in this file has to be updated to match the new file name.
 
 # Existing References
 
