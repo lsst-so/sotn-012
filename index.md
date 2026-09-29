@@ -1,10 +1,10 @@
-# Nominal Behavior and Failure Signatures of the Glycol Refrigeration Systems
+# What Changes the Glycol Chiller Set Points, and Does It Precede Failures?
 
 ```{abstract}
-The Vera C. Rubin Observatory relies on a network of glycol refrigeration systems to cool the telescope, the LSST Camera (LSSTCam), the M1M3 mirror, and facility spaces. Since first light, failures in these systems have repeatedly interrupted night operations. Existing documentation covers the architecture, response procedures, and individual failure reports, but no document defines nominal behavior in telemetry, which makes it hard to distinguish a developing failure from routine variation. In this technical note, we characterize the nominal operating envelope of each glycol loop using Engineering and Facility Database (EFD) telemetry, then compare the telemetry preceding catalogued failure events against that envelope to identify failure signatures and possible precursors. The result is intended as a common baseline for defining alarm thresholds.
+The glycol chillers that cool the Simonyi Telescope, the LSST Camera (LSSTCam) and facility spaces do not hold a fixed supply temperature: the Environmental Awareness System (EAS) re-commands their set points automatically, many times a day. Because glycol failures have repeatedly interrupted night operations, a set-point change near an incident invites the reading that it caused or foreshadowed the failure. In this technical note we establish what actually drives those changes, using the `lsst.sal.HVAC.logevent_chillerConfiguration` events from 1 January to 20 July 2026 together with the EAS source and configuration, and we test them against a catalogue of cooling incidents. We find no set-point signature that consistently precedes a failure, and we show that frequent changes on the two EAS-controlled chillers are expected behaviour rather than an anomaly. This note is scoped to the set points only; the nominal flow, temperature and pressure envelopes of the glycol loops are left to separate analyses.
 ```
 
-# RSO-901 Glycol Set Point Analysis
+## Scope and method
 
 [RSO-901](https://rubinobs.atlassian.net/browse/RSO-901) is about understanding what are the criteria related to changes in the glycol chiller set points, and whether those changes line up with the catalogued glycol failures. We read every `lsst.sal.HVAC.logevent_chillerConfiguration` event from 1 January to 20 July 2026 (which is when observations were stopped due to a rain storm). This event publishes a chiller's `activeSetpoint` each time it is (re)configured, and plotted the set points against the incidents in `notebooks/glycol_catastrophic_faults.csv`.
 
@@ -75,11 +75,11 @@ The notebooks are in the [`notebooks/`](https://github.com/lsst-so/sotn-012/tree
 
 They are committed without outputs (enforced by `nbstripout` in `.pre-commit-config.yaml`), so run them in a JupyterLab session on the RSP with the `LSST` kernel to reproduce the numbers above. To move the window, change `start_day_obs` / `end_day_obs` in the *Date Range* notebook's parameters cell and re-run; it writes `../_extra/plots/chiller_setpoints_<start>_<end>.html`, which Sphinx copies to the site, so the `<iframe>` path in this file has to be updated to match the new file name.
 
-# Existing References
+## Existing References
 
 The list below is an extensive compilation of tickets and Confluence pages related to the Glycol Systems generated using Claude.ai. The FRACAS tickets are filtered to contain only tickets with the LSSTCam installed on Simonyi Telescope.
 
-## Main FRACAS Tickets
+### Main FRACAS Tickets
 
 * [FRACAS-430](https://rubinobs.atlassian.net/browse/FRACAS-430) Glycol System Failures  
 Epic created in August 2026 to group glycol outage failure reports.  
@@ -125,7 +125,7 @@ July 2026 storm. The glycol chillers shut down when the main generator stopped p
 * [FRACAS-415](https://rubinobs.atlassian.net/browse/FRACAS-415) Storm, Jul 2026 -- Summit Dynalene System Went off after Losing the Glycol Coolant Supply
 Same event. Dynalene shut down after the glycol chillers and their recirculation system stopped supplying coolant, a clear example of the glycol-to-Dynalene cascade.
 
-## Related RSO Tickets
+### Related RSO Tickets
 
 * [RSO-899](https://rubinobs.atlassian.net/browse/RSO-899) Glycol issue systematic analysis
 Epic to analyze 2026 glycol flow and temperature telemetry and look for patterns preceding flow loss after power glitches and setpoint changes.
@@ -146,7 +146,7 @@ Proposed Docushare page describing how the LSSTCam cryogenic systems depend on t
 * [RSO-907](https://rubinobs.atlassian.net/browse/RSO-907) Update diagram in the Glycol documentation page
 Lists the corrections needed in the architecture diagram, such as TMA thermal cabinets, whether Chiller 4 feeds the control room and offices, and the valve from Chiller 3 to the Level 2 CRACs.
 
-## Related OBS Tickets
+### Related OBS Tickets
 
 * [OBS-830](https://rubinobs.atlassian.net/browse/OBS-830) HVAC subsystems report zeros (or fixed values) when component is disconnected
 The HVAC CSC publishes zeros or frozen values as real telemetry when it loses the connection. This is relevant when filtering data for a nominal baseline.
@@ -161,9 +161,9 @@ Requests Watcher alarms for Dynalene so observers are alerted before, or in para
 * [OBS-1660](https://rubinobs.atlassian.net/browse/OBS-1660) Review/add additional watcher alarms for chillers
 Chiller 2 stayed off after a March 2026 glitch with no alarm for over an hour. The flow alarm limit was likely set too low, and only some of the Watcher fields were populated.
 
-## Confluence Pages
+### Confluence Pages
 
-### System description
+#### System description
 
 * [Glycol/Dynalene Flow Path and Cooling System Architecture](https://rubinobs.atlassian.net/wiki/spaces/OOD/pages/1065943153)
 Floor-by-floor description of the cooling system, from the Level 1 chiller plant to the PCS chiller and Cryo circuits on Pier 7, including installed equipment, alarm resets, the Dynalene control and telemetry path, and dashboards. Still a draft, and its diagram is being corrected under RSO-907.
@@ -178,7 +178,7 @@ Explains how the PCS cools the camera cold plate to about -40 °C through vacuum
 * [Plan/Proposal for switching cryo compressors to cold (tracking) Glycol on level 7](https://rubinobs.atlassian.net/wiki/spaces/CAM/pages/1723957276)
 Describes the cold water circuit of the LSSTCam cryo modules and its flow and temperature needs, and proposes moving the compressors to the cold, tracking glycol loop.
 
-### Monitoring and response
+#### Monitoring and response
 
 * [Glycol Cooling System Monitoring and Response Guide](https://rubinobs.atlassian.net/wiki/spaces/OOD/pages/847446349)
 Main operator guide: dashboards to watch, design conditions (40% ethylene glycol, 12.7 barg, inlet 5 °C below ambient, temperature tolerances), flow thresholds of about 1.5 gpm for concern and below 1 gpm for emergency, and the note that the PCS usually survives glycol outages shorter than about 90 s.
@@ -191,7 +191,7 @@ Emergency response for glycol, Dynalene, PCS chiller, Cryo, and full power failu
 * [PCS Chiller Troubleshooting Guide](https://rubinobs.atlassian.net/wiki/spaces/~712020071056b447a84bfe9d0fd25503c7b3a2/pages/2003435560)
 Troubleshooting reference for PCS chiller outages and restart readiness, focused on telling a true chiller fault from a protection trip or an environmental condition. Under active editing (RSO-896).
 
-### Analysis, incidents, and maintenance
+#### Analysis, incidents, and maintenance
 
 * [Glycol Flow Telemetry Issue Identification Framework](https://rubinobs.atlassian.net/wiki/spaces/~pvenegas/pages/2031419439)
 Draft for RSO-900. Groups 2026 glycol issues into three classes (true flow outages, telemetry outages that mimic flow loss, and setpoint anomalies) and starts an event register. Notes that no normal flow range is documented for the chiller loops.
@@ -204,7 +204,7 @@ The same kind of log for the Dynalene circuits.
 * [Organizing glycol & dynalene contents for OS](https://rubinobs.atlassian.net/wiki/spaces/~jseron/pages/1067581452)
 Tentative structure for observing-specialist documentation on glycol and Dynalene. Useful to check so the technote does not overlap with it.
 
-## Other References
+### Other References
 
 * [Fluid Distribution System (092-308-F-M-01000)](https://docushare.lsst.org/docushare/dsweb/Get/Document-45445/092-308-F-M-01000-Ed002.pdf)
 Docushare design document for the fluid distribution system.
