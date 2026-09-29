@@ -19,9 +19,8 @@ In notebooks, don't hand-roll the timezone math — use the helpers, which alrea
 boundary and return UTC `astropy.time.Time` objects for EFD queries:
 
 ```python
-from lsst.summit.utils.efdUtils import (
-    getEfdData, makeEfdClient, getDayObsStartTime, getDayObsEndTime,
-)
+from lsst.summit.utils.dateTime import getDayObsStartTime, getDayObsEndTime
+from lsst.summit.utils.efdUtils import getEfdData, makeEfdClient
 
 efd_client = makeEfdClient()
 day_obs = 20260119
