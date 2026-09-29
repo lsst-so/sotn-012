@@ -13,3 +13,6 @@ repos:
     rev: 0.7.1
     hooks:
       - id: nbstripout
+        # --keep-id: the cells have hand-written ids (cell-params, cell-imports)
+        # that the notes refer to; the default would renumber them 0, 1, 2, ...
+        args: [--keep-id]
