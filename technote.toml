@@ -21,3 +21,12 @@ orcid = "https://orcid.org/0000-0002-1557-3560"
 name = "NSF-DOE Vera C. Rubin Observatory / NSF NOIRLab"
 internal_id = "RubinObsC"
 address = "La Serena"
+
+[[technote.authors]]
+name.given = "Erik"
+name.family = "Dennihy"
+internal_id = "dennihye"
+orcid = "https://orcid.org/0000-0003-2852-268X"
+[[technote.authors.affiliations]]
+name = "NSF-DOE Vera C. Rubin Observatory"
+internal_id = "RubinObs"
