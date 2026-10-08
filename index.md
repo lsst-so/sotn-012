@@ -4,6 +4,8 @@
 The glycol chillers that cool the Simonyi Telescope, the LSST Camera (LSSTCam) and facility spaces do not hold a fixed supply temperature: the Environmental Awareness System (EAS) re-commands their set points automatically, many times a day. Because glycol failures have repeatedly interrupted night operations, a set-point change near an incident invites the reading that it caused or foreshadowed the failure. In this technical note we establish what actually drives those changes, using the `lsst.sal.HVAC.logevent_chillerConfiguration` events from 1 January to 20 July 2026 together with the EAS source and configuration, and we test them against a catalogue of cooling incidents. We find no set-point signature that consistently precedes a failure, and we show that frequent changes on the two EAS-controlled chillers are expected behaviour rather than an anomaly. This note is scoped to the set points only; the nominal flow, temperature and pressure envelopes of the glycol loops are left to separate analyses.
 ```
 
+**Use of AI.** This work was done with Claude, Anthropic's AI assistant, used mostly through Claude Code in this repository. Claude wrote the analysis notebooks and `setpoint_plots.py`, read the `ts_eas`, `ts_hvac` and `ts_config_ocs` source and configuration to explain what drives the set points, compiled the Jira and Confluence references and the FRACAS set-point catalogue (`notebooks/fracas_setpoint_events.csv`), and drafted the text of this note. The *Command Response* notebook was written by Erik Dennihy with an AI coding agent, in the same style as the other notebooks. The authors directed the analysis, ran the notebooks on the RSP, checked the results against the telemetry and the tickets, and reviewed and edited every section; they are responsible for its content.
+
 ## Scope and method
 
 [RSO-901](https://rubinobs.atlassian.net/browse/RSO-901) is about understanding what are the criteria related to changes in the glycol chiller set points, and whether those changes line up with the catalogued glycol failures. We read every `lsst.sal.HVAC.logevent_chillerConfiguration` event from 1 January to 20 July 2026 (which is when observations were stopped due to a rain storm). This event publishes a chiller's `activeSetpoint` each time it is (re)configured, and plotted the set points against the incidents in `notebooks/glycol_catastrophic_faults.csv`.
@@ -52,16 +54,35 @@ It is not strict lead/standby, though: a true standby would sit at 0 and Chiller
 
 Three caveats on that comparison. First, the notebook also reports that Chiller 01 is the less-loaded unit in only 54% of 10-min bins, which sounds like a coin flip but is not evidence against the asymmetry: the other 46% lumps together bins where Chiller 01 genuinely runs harder and bins where the two are *equal*, and since Chiller 01 sits at 25% most of the time, ties at 25% dominate that remainder. Counting strict inequalities both ways would be the informative comparison. Second, `workingCapacity` is only available for 112 of the 201 `day_obs` in the window, ending 22 April, so the July storm period is not covered — the gap is consistent with [OBS-1225](https://rubinobs.atlassian.net/browse/OBS-1225) and [FRACAS-371](https://rubinobs.atlassian.net/browse/FRACAS-371), where chiller telemetry was lost while the chillers kept running. Third, the clustering on multiples of 25% suggests the field reports discrete compressor stages rather than a continuous load, so small differences in it should not be over-read; [OBS-830](https://rubinobs.atlassian.net/browse/OBS-830) also warns that HVAC fields can report fixed values when a component is disconnected. Confirming the lead/lag reading needs the per-compressor `compressorNNWorking` flags, which would show directly how many stages each chiller runs and whether Chiller 01's 25% floor is a minimum-run constraint.
 
+## Command response
+
+<!-- TODO(RSO-901): fill the {TBD} values from the *Command Response* notebook once it has run on the RSP (see notebooks/ai_notes.md, "Status / handover"). -->
+
+The sections above read the set points from `logevent_chillerConfiguration`, but that event is the chiller's *readback*: the HVAC CSC builds it from the chiller's telemetry, and only while the chiller is switched on. The *Command Response* notebook (Erik Dennihy) compares it with what EAS actually sent, every `HVAC.configChiller` command to Chillers 01 and 02 over the same window, about one per chiller per minute. A readback matches a command when it is within 0.1 °C, because the chiller truncates set points to 0.1 °C. A command is only judged once its value is at least 60 s old, so a chiller still moving to a new value is not counted as wrong.
+
+**Latency.** Of the {TBD} new commands, {TBD}% were answered within 60 s, with a median delay of {TBD} s; {TBD} were never answered. **Time mismatched.** Chiller 01 spent {TBD} h ({TBD}% of the judged time) with the readback off the command, Chiller 02 {TBD} h ({TBD}%). **Size.** Most of that is small: only {TBD} h and {TBD} h were off by 0.5 °C or more, in {TBD} periods, the worst at {TBD} °C.
+
+The large mismatches are where FRACAS cases would show up. In this window the catalogue (`notebooks/fracas_setpoint_events.csv`) lists [FRACAS-387](https://rubinobs.atlassian.net/browse/FRACAS-387) (15 May, a suspected low set point on Chiller 02) and [FRACAS-402](https://rubinobs.atlassian.net/browse/FRACAS-402) (3 and 12 July, when the chillers came back from power cuts on Niagara's default set points instead of the EAS ones). {TBD: say whether each appears as a large mismatch period in Figure 1.}
+
+```{raw} html
+<iframe src="plots/chiller_command_response_20260101_20260720.html"
+        title="Interactive plot of chiller readback against EAS command, January to July 2026"
+        style="width: 100%; height: 720px; border: 0;"
+        loading="lazy"></iframe>
+<p><em>Figure 1. Time per UTC day that Chillers 01 and 02 reported a set point different from the EAS command (gray: under 0.5 °C; colour: 0.5 °C or more), and the worst error of each such day, 2026-01-01 to 2026-07-20. Dashed vertical lines are the catalogued cooling incidents.
+<a href="plots/chiller_command_response_20260101_20260720.html">Open the figure full screen.</a></em></p>
+```
+
 ## Interactive figure
 
-Figure 1 shows the set points (top) and the number of set-point changes per week (bottom). Drag to pan, scroll to zoom the time axis, hover for values, and click a legend entry to hide that chiller. Dashed gray lines mark catalogued cooling incidents #7 ([FRACAS-366](https://rubinobs.atlassian.net/browse/FRACAS-366), 2026-03-20) and #8 ([FRACAS-383](https://rubinobs.atlassian.net/browse/FRACAS-383), [FRACAS-384](https://rubinobs.atlassian.net/browse/FRACAS-384), 2026-05-07). The window extends through 20 July so that it covers the July storm ([FRACAS-414](https://rubinobs.atlassian.net/browse/FRACAS-414), [FRACAS-415](https://rubinobs.atlassian.net/browse/FRACAS-415)); that event is not yet in `glycol_catastrophic_faults.csv`, so it carries no dashed line. The *Date Range* notebook regenerates the figure for any `day_obs` range.
+Figure 2 shows the set points (top) and the number of set-point changes per week (bottom). Drag to pan, scroll to zoom the time axis, hover for values, and click a legend entry to hide that chiller. Dashed gray lines mark catalogued cooling incidents #7 ([FRACAS-366](https://rubinobs.atlassian.net/browse/FRACAS-366), 2026-03-20) and #8 ([FRACAS-383](https://rubinobs.atlassian.net/browse/FRACAS-383), [FRACAS-384](https://rubinobs.atlassian.net/browse/FRACAS-384), 2026-05-07). The window extends through 20 July so that it covers the July storm ([FRACAS-414](https://rubinobs.atlassian.net/browse/FRACAS-414), [FRACAS-415](https://rubinobs.atlassian.net/browse/FRACAS-415)); that event is not yet in `glycol_catastrophic_faults.csv`, so it carries no dashed line. The *Date Range* notebook regenerates the figure for any `day_obs` range.
 
 ```{raw} html
 <iframe src="plots/chiller_setpoints_20260101_20260720.html"
         title="Interactive plot of HVAC chiller set points, January to July 2026"
         style="width: 100%; height: 700px; border: 0;"
         loading="lazy"></iframe>
-<p><em>Figure 1. HVAC chiller active set points from <code>lsst.sal.HVAC.logevent_chillerConfiguration</code>, 2026-01-01 to 2026-07-20 (UTC).
+<p><em>Figure 2. HVAC chiller active set points from <code>lsst.sal.HVAC.logevent_chillerConfiguration</code>, 2026-01-01 to 2026-07-20 (UTC).
 <a href="plots/chiller_setpoints_20260101_20260720.html">Open the figure full screen.</a></em></p>
 ```
 
@@ -69,7 +90,8 @@ Figure 1 shows the set points (top) and the number of set-point changes per week
 
 The notebooks are in the [`notebooks/`](https://github.com/lsst-so/sotn-012/tree/main/notebooks) folder of this repository and must run on the RSP (they query the EFD):
 
-* `RSO-901 Glycol Set Points - Date Range.ipynb` builds the change-log table, the incident overlay and Figure 1 (via `setpoint_plots.py`).
+* `RSO-901 Glycol Set Points - Date Range.ipynb` builds the change-log table, the incident overlay and Figure 2 (via `setpoint_plots.py`).
+* `RSO-901 Glycol Set Points - Command Response.ipynb` compares every EAS `configChiller` command with the chiller readback and builds Figure 1 (also via `setpoint_plots.py`).
 * `RSO-901 Glycol Set Points - Monthly.ipynb` and `RSO-901 Glycol Set Points - Single Day.ipynb` show the same event over one month or one night.
 * `ai_notes.md` surveys the HVAC topics and explains how to interpret `chillerConfiguration`.
 

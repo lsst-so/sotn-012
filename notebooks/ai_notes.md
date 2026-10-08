@@ -8,6 +8,43 @@ Is there a pattern we can see?
 The easiest way is to take a look at the flowmeters that we have on the Crio and the PCS cabinets. 
 The Crio cabinet has input and output temperatures and the PCS has at least the input temperature.
 
+## Status / handover (2026-10-08)
+
+Agreed with Erik Dennihy (tag-up 2026-10-02): fold his *Command Response* notebook into this technote,
+add him as co-author, then he does the full line-by-line review and the ticket closes. No new subtask.
+
+Done (uncommitted on `tickets/RSO-901` unless the log says otherwise):
+
+- `technote.toml`: Erik added as second author (`dennihye`, ORCID 0000-0003-2852-268X, `RubinObs`).
+- `index.md`: **Use of AI** paragraph below the abstract (Claude via Claude Code; Erik's notebook written
+  with an AI agent; authors reviewed everything).
+- `index.md`: new `## Command response` section between "Expected behavior per chiller" and
+  "Interactive figure", with its iframe as **Figure 1**; the set-point figure is now **Figure 2**.
+  "Reproducing the analysis" lists the new notebook.
+- `setpoint_plots.py`: `build_command_response_figure` (+ `daily_mismatch`), the Bokeh version of the
+  notebook's mismatch-time and mismatch-size figures. Tested on synthetic data only.
+- *Command Response* notebook: new cells `cell-technote-figure-md` / `cell-technote-figure` (after
+  `cell-size-fig`) write `../_extra/plots/chiller_command_response_20260101_20260720.html`.
+  Erik's matplotlib figures are left as they were.
+
+Blocked on the RSP (under maintenance on 2026-10-08):
+
+1. Run the *Command Response* notebook on the RSP for 20260101–20260720, which writes the Figure 1 HTML.
+   Commit that HTML (`_extra/plots/`); the iframe already points to it.
+2. Fill every `{TBD}` in the `## Command response` section from the outputs and delete the `TODO` comment.
+   Values come from `cell-latency` (new commands, % answered, median latency, unanswered), `cell-mismatch`
+   (`summary`: hours and % mismatched, large hours, large periods) and `cell-size` (worst error).
+3. FRACAS tie-in (one or two sentences, keep it short): check whether FRACAS-387 (2026-05-15) and
+   FRACAS-402 (2026-07-03 and 2026-07-12, Niagara defaults after power cuts) show up as large-mismatch
+   periods (`large_periods` table).
+4. Check the new figure in the built site and trim panels if it is too long (Bruno's call).
+
+Then: one sentence on the command response in the abstract and in "Scope and method"; squash or reword
+the three `[wip]` commits (Bruno force-pushes, not the agent); ask Erik for the full review.
+
+Open question: earlier commits carry a `Co-Authored-By: SLAC AI` trailer. If that is not Claude, the
+Use of AI paragraph needs to name it too.
+
 ## Analysis cadence
 
 We run the analysis one `day_obs` at a time. `day_obs` is an integer like `20260119` and
