@@ -1,5 +1,8 @@
 _build/
+.env**
 .technote/
 .tox/
 venv/
 .venv/
+__pycache__/
+.ipynb_checkpoints/
