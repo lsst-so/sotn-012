@@ -1,4 +1,5 @@
 _build/
+.env**
 .technote/
 .tox/
 venv/
