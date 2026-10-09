@@ -8,42 +8,56 @@ Is there a pattern we can see?
 The easiest way is to take a look at the flowmeters that we have on the Crio and the PCS cabinets. 
 The Crio cabinet has input and output temperatures and the PCS has at least the input temperature.
 
-## Status / handover (2026-10-08)
+## Status / handover (2026-10-09)
 
 Agreed with Erik Dennihy (tag-up 2026-10-02): fold his *Command Response* notebook into this technote,
 add him as co-author, then he does the full line-by-line review and the ticket closes. No new subtask.
 
-Done (uncommitted on `tickets/RSO-901` unless the log says otherwise):
+Done and committed on `tickets/RSO-901` (three `[wip]` commits to be squashed by Bruno, who does all
+force-pushes):
 
-- `technote.toml`: Erik added as second author (`dennihye`, ORCID 0000-0003-2852-268X, `RubinObs`).
-- `index.md`: **Use of AI** paragraph below the abstract (Claude via Claude Code; Erik's notebook written
-  with an AI agent; authors reviewed everything).
-- `index.md`: new `## Command response` section between "Expected behavior per chiller" and
-  "Interactive figure", with its iframe as **Figure 1**; the set-point figure is now **Figure 2**.
-  "Reproducing the analysis" lists the new notebook.
-- `setpoint_plots.py`: `build_command_response_figure` (+ `daily_mismatch`), the Bokeh version of the
-  notebook's mismatch-time and mismatch-size figures. Tested on synthetic data only.
-- *Command Response* notebook: new cells `cell-technote-figure-md` / `cell-technote-figure` (after
-  `cell-size-fig`) write `../_extra/plots/chiller_command_response_20260101_20260720.html`.
-  Erik's matplotlib figures are left as they were.
+- `technote.toml`: Erik added as second author.
+- `index.md`: **Use of AI** paragraph; `## Command response` section with its iframe as **Figure 1**
+  (set-point figure is **Figure 2**); one sentence on the command response in the abstract and in
+  "Scope and method"; the FRACAS-387 / FRACAS-402 tie-in; "Reproducing the analysis" lists the notebook.
+- `setpoint_plots.py`: `build_command_response_figure` (+ `daily_mismatch`), Bokeh version of the
+  notebook's mismatch-time and mismatch-size figures.
+- *Command Response* notebook run on 20260101–20260720 (2026-10-09, from the SDF shell with `.env`
+  sourced); `_extra/plots/chiller_command_response_20260101_20260720.html` committed.
+- **Bug fixed in the notebook (2026-10-09, tell Erik):** it decoded `logevent_deviceEnabled` with the
+  kernel's `DeviceId` enum, but the bit order follows the ts_xml *the HVAC CSC was built against* (see
+  "deviceEnabled bit order" below). From the CSC upgrade on 2026-02-25 to 2026-06-26 it therefore read the
+  glycol switch valves as the chillers and judged nothing in March–May. The fix reads `xmlVersion` from
+  `logevent_softwareVersions` and picks the bit per version (`ENABLED_BIT_BY_XML_MAJOR` in `cell-params`).
+  Judged hours went from ~1365 to ~3060/3150 per chiller and large periods from 15 to 49.
 
-Blocked on the RSP (under maintenance on 2026-10-08):
+Left:
 
-1. Run the *Command Response* notebook on the RSP for 20260101–20260720, which writes the Figure 1 HTML.
-   Commit that HTML (`_extra/plots/`); the iframe already points to it.
-2. Fill every `{TBD}` in the `## Command response` section from the outputs and delete the `TODO` comment.
-   Values come from `cell-latency` (new commands, % answered, median latency, unanswered), `cell-mismatch`
-   (`summary`: hours and % mismatched, large hours, large periods) and `cell-size` (worst error).
-3. FRACAS tie-in (one or two sentences, keep it short): check whether FRACAS-387 (2026-05-15) and
-   FRACAS-402 (2026-07-03 and 2026-07-12, Niagara defaults after power cuts) show up as large-mismatch
-   periods (`large_periods` table).
-4. Check the new figure in the built site and trim panels if it is too long (Bruno's call).
+1. Bruno: look at Figure 1 in the built site (three panels, 200 + 200 + 240 px in a 720 px iframe; the
+   agent could not screenshot it here) and decide whether anything is trimmed.
+2. Bruno: squash/reword the `[wip]` commits, push, ask Erik for the full review.
+3. Erik: full review; close RSO-901.
 
-Then: one sentence on the command response in the abstract and in "Scope and method"; squash or reword
-the three `[wip]` commits (Bruno force-pushes, not the agent); ask Erik for the full review.
+Build and tooling notes: the EFD is reachable from a plain SDF shell once the repo's `.env` is sourced
+(`set -a; source .env; set +a`), so the notebooks can be executed with `jupyter nbconvert --execute`.
+`documenteer` is not in the stack conda env; build the technote from a venv with
+`pip install "documenteer[technote]>=2.0.0,<3"` and `sphinx-build --keep-going -n -W -T -b html . _build/html`.
+`pre-commit` and `nbstripout` are in the stack env.
 
-Open question: earlier commits carry a `Co-Authored-By: SLAC AI` trailer. If that is not Claude, the
-Use of AI paragraph needs to name it too.
+Open question: earlier commits carry a `Co-Authored-By: SLAC AI` trailer; that is the SLAC attribution
+line for Claude Code, so the Use of AI paragraph needs no other tool.
+
+## deviceEnabled bit order
+
+`lsst.sal.HVAC.logevent_deviceEnabled.device_ids` is a bitmask whose bit N is the Nth member of the
+`DeviceId` enum **of the ts_xml the HVAC CSC was built against** (`logevent_softwareVersions.xmlVersion`),
+not of the ts_xml in the analysis kernel. The enum was reordered between ts_xml 24 and 25 (three devices
+inserted before the chillers), so Chiller 01 / 02 are bits 5 / 6 up to ts_xml 24.x and bits 8 / 9 from
+25.0 on. At the summit the HVAC CSC jumped from 24.2.0 to 26.0.0 on 2026-02-25 13:13 UTC (then 27.0.0 on
+2026-04-22 and 27.1.1 on 2026-06-26). Bits 5 / 6 under the new layout are the glycol switch valves, which
+were off until 2026-06-26, so decoding with the kernel's (new) enum shows both chillers off from
+2026-02-25 to 2026-06-26. The *Command Response* notebook handles this with `ENABLED_BIT_BY_XML_MAJOR`;
+extend that table if a future ts_xml reorders the enum again.
 
 ## Analysis cadence
 
