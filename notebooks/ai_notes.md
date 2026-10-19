@@ -41,7 +41,7 @@ Left:
 Build and tooling notes: the EFD is reachable from a plain SDF shell once the repo's `.env` is sourced
 (`set -a; source .env; set +a`), so the notebooks can be executed with `jupyter nbconvert --execute`.
 `documenteer` is not in the stack conda env; build the technote from a venv with
-`pip install "documenteer[technote]>=2.0.0,<3"` and `sphinx-build --keep-going -n -W -T -b html . _build/html`.
+`pip install "documenteer[technote]>=2.0.0,<3"` (e.g. in `~/.venvs/sotn012-docs`) and `sphinx-build --keep-going -n -W -T -b html . _build/html`.
 `pre-commit` and `nbstripout` are in the stack env.
 
 Open question: earlier commits carry a `Co-Authored-By: SLAC AI` trailer; that is the SLAC attribution
