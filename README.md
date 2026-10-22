@@ -1,11 +1,11 @@
 [![Website](https://img.shields.io/badge/sotn--012-lsst.io-brightgreen.svg)](https://sotn-012.lsst.io)
 [![CI](https://github.com/lsst-so/sotn-012/actions/workflows/ci.yaml/badge.svg)](https://github.com/lsst-so/sotn-012/actions/workflows/ci.yaml)
 
-# Nominal Behavior and Failure Signatures of the Glycol Refrigeration Systems
+# What Changes the Glycol Chiller Set Points, and Does It Precede Failures?
 
 ## SOTN-012
 
-The Vera C. Rubin Observatory relies on a network of glycol refrigeration systems to cool the telescope, the LSST Camera (LSSTCam), the M1M3 mirror, and facility spaces. Since first light, failures in these systems have repeatedly interrupted night operations. Existing documentation covers the architecture, response procedures, and individual failure reports, but no document defines nominal behavior in telemetry, which makes it hard to distinguish a developing failure from routine variation. In this technical note, we characterize the nominal operating envelope of each glycol loop using Engineering and Facility Database (EFD) telemetry, then compare the telemetry preceding catalogued failure events against that envelope to identify failure signatures and possible precursors. The result is intended as a common baseline for defining alarm thresholds.
+The glycol chillers that cool the Simonyi Telescope, the LSST Camera (LSSTCam) and facility spaces do not hold a fixed supply temperature: the Environmental Awareness System (EAS) re-commands their set points automatically, many times a day. Because glycol failures have repeatedly interrupted night operations, a set-point change near an incident invites the reading that it caused or foreshadowed the failure. In this technical note we establish what actually drives those changes, using the `lsst.sal.HVAC.logevent_chillerConfiguration` events from 1 January to 20 July 2026 together with the EAS source and configuration, and we test them against a catalogue of cooling incidents. We find no set-point signature that consistently precedes a failure, and we show that frequent changes on the two EAS-controlled chillers are expected behaviour rather than an anomaly. This note is scoped to the set points only; the nominal flow, temperature and pressure envelopes of the glycol loops are left to separate analyses.
 
 **Links:**
 
