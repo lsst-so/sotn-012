@@ -1,0 +1,23 @@
+/* Local overrides for the lsst-sqre/technote theme.
+ *
+ * Loaded after the theme's own stylesheets (see conf.py), so a plain :root
+ * block is enough to win -- no !important or deeper selector needed. The
+ * theme defines these in src/assets/styles/properties/_layout.scss.
+ */
+
+:root {
+  /* Widen the body column from the theme's 72ch.
+   *
+   * 72ch is a typographic optimum for continuous prose, but this note is
+   * mostly wide material -- Bokeh figures, the parameter tables, and long
+   * inline links to ts_eas source lines -- which the narrow column forces
+   * to wrap or scroll. 96ch keeps line length comfortable while giving
+   * those blocks noticeably more room.
+   *
+   * This is the only variable that needs changing: the theme derives
+   * --tn-content-width from it, and the full-bleed negative-margin maths
+   * for .technote-wide-content reads that value, so wide blocks stay
+   * correctly aligned.
+   */
+  --tn-content-max-width: 96ch;
+}
