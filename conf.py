@@ -15,3 +15,6 @@ html_extra_path = ["_extra"]
 # loads after the theme's and wins.
 html_static_path = [*globals().get("html_static_path", []), "_static"]
 html_css_files = [*globals().get("html_css_files", []), "technote-overrides.css"]
+
+# Spanish translation (branch main-es).
+language = "es"
