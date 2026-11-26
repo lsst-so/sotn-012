@@ -10,3 +10,14 @@ jobs:
     secrets:
       ltd_username: ${{ secrets.LTD_USERNAME }}
       ltd_password: ${{ secrets.LTD_PASSWORD }}
+
+  # main-es holds the Spanish translation and must never be merged. Make this
+  # check required on main (Settings -> Branches) so GitHub blocks the merge.
+  block-main-es:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail on PRs from main-es
+        if: github.event_name == 'pull_request' && github.head_ref == 'main-es'
+        run: |
+          echo "::error::main-es is the Spanish version and must not be merged."
+          exit 1
